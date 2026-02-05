@@ -1,0 +1,33 @@
+syntax = "proto3";
+package firewall;
+
+service FirewallAgent {
+  // General commands Lieutenant to add/update a rule
+  rpc UpdateRule(Rule) returns (UpdateResponse) {}
+  
+  // General asks for stats (telemetry)
+  rpc GetStats(Empty) returns (StatsResponse) {}
+}
+
+message Rule {
+  string cidr = 1;      // e.g. "1.2.3.4/32" or "10.0.0.0/8"
+  Action action = 2;    // DROP, PASS, REDIRECT
+  uint32 redirect_ifindex = 3; // Only used if action == REDIRECT
+}
+
+enum Action {
+  PASS = 0;
+  DROP = 1;
+  REDIRECT = 2;
+}
+
+message UpdateResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message Empty {}
+message StatsResponse {
+  uint64 dropped_packets = 1;
+  uint64 redirected_packets = 2;
+}
