@@ -1,0 +1,30 @@
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 1. Install FRR 9.x from Official Repo
+RUN apt-get update && apt-get install -y curl gnupg2 lsb-release && \
+    curl -s https://deb.frrouting.org/frr/keys.asc | apt-key add - && \
+    echo "deb https://deb.frrouting.org/frr $(lsb_release -s -c) frr-9" > /etc/apt/sources.list.d/frr.list && \
+    apt-get update && apt-get install -y \
+    frr frr-pythontools iproute2 tcpdump iputils-ping ethtool iperf3 traceroute jq net-tools wget tar \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Enable Daemons
+RUN sed -i 's/isisd=no/isisd=yes/' /etc/frr/daemons && \
+    sed -i 's/zebra=no/zebra=yes/' /etc/frr/daemons
+
+# 3. Add the Agent
+COPY cherry-agent /usr/local/bin/cherry-agent
+RUN chmod +x /usr/local/bin/cherry-agent
+
+# 4. THE CRITICAL ADDITION: The Entrypoint Script
+# This ensures FRR starts, SRv6 is enabled in the kernel, and your Agent runs.
+RUN echo '#!/bin/bash\n\
+sysctl -w net.ipv6.conf.all.forwarding=1\n\
+sysctl -w net.ipv6.conf.all.seg6_enabled=1\n\
+/usr/lib/frr/frrinit.sh start\n\
+/usr/local/bin/cherry-agent &\n\
+exec /usr/bin/tail -f /dev/null' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+EXPOSE 8080 50051
+ENTRYPOINT ["/entrypoint.sh"]
