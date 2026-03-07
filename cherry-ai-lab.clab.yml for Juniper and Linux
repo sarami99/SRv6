@@ -1,0 +1,98 @@
+name: cherry-ai-lab
+
+topology:
+  nodes:
+    # --- Juniper Core (Logical Systems) ---
+    juniper-core:
+      kind: juniper_vjunosrouter
+      image: vrnetlab/juniper_vjunos-router:25.4R1.12
+      startup-config: ./configs/juniper-core.conf
+
+    # --- Ubuntu Hosts (Edge PE) ---
+    ubuntu01:
+      kind: linux
+      image: cherry-srv6-node:latest
+      binds:
+        - ./configs/ubuntu01_frr.conf:/etc/frr/frr.conf
+      exec:
+        # Create the VLAN subinterfaces on boot
+        - ip link add link eth1 name eth1.11 type vlan id 11
+        - ip link set dev eth1.11 up
+        - ip link add link eth1 name eth1.12 type vlan id 12
+        - ip link set dev eth1.12 up
+     # exec:
+     #   - sysctl -w net.ipv6.conf.all.forwarding=1
+     #   - sysctl -w net.ipv6.conf.all.seg6_enabled=1
+     #   - service frr restart
+     #   - /usr/local/bin/cherry-agent &
+    ubuntu02:
+      kind: linux
+      image: cherry-srv6-node:latest
+      binds:
+        - ./configs/ubuntu02_frr.conf:/etc/frr/frr.conf
+     # exec:
+     #   - sysctl -w net.ipv6.conf.all.forwarding=1
+     #   - sysctl -w net.ipv6.conf.all.seg6_enabled=1
+     #   - service frr restart
+     #   - /usr/local/bin/cherry-agent &
+
+    # --- Whitebox Linux PE ---
+    linux01:
+      kind: linux
+      image: cherry-srv6-node:latest
+      binds:
+        - ./configs/linux01_frr.conf:/etc/frr/frr.conf
+     # exec:
+     #   - sysctl -w net.ipv6.conf.all.forwarding=1
+     #   - sysctl -w net.ipv6.conf.all.seg6_enabled=1
+     #   - service frr restart
+     #   - /usr/local/bin/cherry-agent &
+    linux02:
+      kind: linux
+      image: cherry-srv6-node:latest
+      binds:
+        - ./configs/linux02_frr.conf:/etc/frr/frr.conf
+     # exec:
+     #   - sysctl -w net.ipv6.conf.all.forwarding=1
+      #  - sysctl -w net.ipv6.conf.all.seg6_enabled=1
+       # - service frr restart
+        #- /usr/local/bin/cherry-agent &
+    linux03:
+      kind: linux
+      image: cherry-srv6-node:latest
+      binds:
+        - ./configs/linux03_frr.conf:/etc/frr/frr.conf
+     # exec:
+     #   - sysctl -w net.ipv6.conf.all.forwarding=1
+      #  - sysctl -w net.ipv6.conf.all.seg6_enabled=1
+       # - service frr restart
+        #- /usr/local/bin/cherry-agent &
+    linux04:
+      kind: linux
+      image: cherry-srv6-node:latest
+      binds:
+        - ./configs/linux04_frr.conf:/etc/frr/frr.conf
+     # exec:
+     #   - sysctl -w net.ipv6.conf.all.forwarding=1
+      #  - sysctl -w net.ipv6.conf.all.seg6_enabled=1
+       # - service frr restart
+        #- /usr/local/bin/cherry-agent &
+
+  links:
+    # --- PE to Core Links ---
+    - endpoints: ["linux01:eth1", "juniper-core:eth1"]   # Jun01 ge-0/0/0
+    - endpoints: ["linux01:eth3", "juniper-core:eth10"]  # Jun09 ge-0/0/9
+    - endpoints: ["linux02:eth1", "juniper-core:eth3"]   # Jun02 ge-0/0/2
+    - endpoints: ["linux02:eth3", "juniper-core:eth2"]   # Jun01 ge-0/0/1
+    - endpoints: ["linux02:eth4", "juniper-core:eth8"]   # Jun07 ge-0/0/7
+    - endpoints: ["linux03:eth1", "juniper-core:eth11"]  # Jun10 ge-0/0/10
+    - endpoints: ["linux03:eth2", "juniper-core:eth4"]   # Jun03 ge-0/0/3
+    - endpoints: ["linux03:eth3", "juniper-core:eth6"]   # Jun05 ge-0/0/5
+    - endpoints: ["linux04:eth1", "juniper-core:eth9"]   # Jun08 ge-0/0/8
+    - endpoints: ["linux04:eth2", "juniper-core:eth5"]   # Jun04 ge-0/0/4
+    - endpoints: ["linux04:eth3", "juniper-core:eth7"]   # Jun06 ge-0/0/6
+
+    # --- Host to PE Links ---
+    - endpoints: ["ubuntu01:eth1", "linux01:eth4"]
+    - endpoints: ["ubuntu01:eth2", "linux02:eth2"]
+    - endpoints: ["ubuntu02:eth1", "juniper-core:eth12"] # Trunk to Jun05/06
