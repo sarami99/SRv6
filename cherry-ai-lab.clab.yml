@@ -1,0 +1,155 @@
+name: cherry-ai-lab
+
+mgmt:
+  network: cherry-v6
+  bridge: clab-mgmt6
+  ipv4-subnet: 172.20.50.0/24
+  ipv6-subnet: 3fff:172:20:50::/64
+  ipv4-gw: 172.20.50.1
+  ipv6-gw: 3fff:172:20:50::1
+
+topology:
+  defaults:
+    # 🟢 FIXED: Strictly aligned with your start_lab.sh target tag
+    image: cherry-ai-node:latest
+    sysctls:
+      net.ipv6.conf.all.forwarding: 1
+      net.ipv6.conf.all.seg6_enabled: 1
+      net.ipv6.conf.default.seg6_enabled: 1
+    binds:
+      - /home/sam/labs/cherry-ai/cherry_shield.c:/root/cherry_shield.c
+      - /sys/fs/bpf:/sys/fs/bpf:shared
+      - /sys/kernel/debug:/sys/kernel/debug:rw  # 🎯 Add this line to expose trace_pipe
+
+  nodes:
+    # ===============================================================
+    # 🏛️ 中間核心層：Juniper vMX
+    # ===============================================================
+    juniper01:
+      kind: juniper_vjunosrouter
+      mgmt-ipv4: 172.20.50.103
+      mgmt-ipv6: 3fff:172:20:50::103
+      image: vrnetlab/juniper_vjunos-router:25.4R1.12
+    juniper02:
+      kind: juniper_vjunosrouter
+      mgmt-ipv4: 172.20.50.16
+      mgmt-ipv6: 3fff:172:20:50::16
+      image: vrnetlab/juniper_vjunos-router:25.4R1.12
+
+    # ===============================================================
+    # ⬅️ 左翼 Fabric (PF0)
+    # ===============================================================
+    ubuntu01:
+      kind: linux
+      mgmt-ipv4: 172.20.50.13
+      binds:
+        - ./configs/ubuntu01_frr.conf:/etc/frr/frr.conf
+    linux01:
+      kind: linux
+      mgmt-ipv4: 172.20.50.207
+      binds:
+        - ./configs/linux01_frr.conf:/etc/frr/frr.conf
+    linux02:
+      kind: linux
+      mgmt-ipv4: 172.20.50.208
+      binds:
+        - ./configs/linux02_frr.conf:/etc/frr/frr.conf
+    linux07:
+      kind: linux
+      mgmt-ipv4: 172.20.50.11
+      binds:
+        - ./configs/linux07_frr.conf:/etc/frr/frr.conf
+    linux09:
+      kind: linux
+      mgmt-ipv4: 172.20.50.205
+      binds:
+        - ./configs/linux09_frr.conf:/etc/frr/frr.conf
+
+    # ===============================================================
+    # ➡️ 右翼 Fabric (PF1)
+    # ===============================================================
+    ubuntu02:
+      kind: linux
+      mgmt-ipv4: 172.20.50.204
+      binds:
+        - ./configs/ubuntu02_frr.conf:/etc/frr/frr.conf
+    linux03:
+      kind: linux
+      mgmt-ipv4: 172.20.50.10
+      binds:
+        - ./configs/linux03_frr.conf:/etc/frr/frr.conf
+    linux04:
+      kind: linux
+      mgmt-ipv4: 172.20.50.206
+      binds:
+        - ./configs/linux04_frr.conf:/etc/frr/frr.conf
+    linux05:
+      kind: linux
+      mgmt-ipv4: 172.20.50.15
+      binds:
+        - ./configs/linux05_frr.conf:/etc/frr/frr.conf
+    linux06:
+      kind: linux
+      mgmt-ipv4: 172.20.50.102
+      binds:
+        - ./configs/linux06_frr.conf:/etc/frr/frr.conf
+    linux08:
+      kind: linux
+      mgmt-ipv4: 172.20.50.17
+      binds:
+        - ./configs/linux08_frr.conf:/etc/frr/frr.conf
+    linux10:
+      kind: linux
+      mgmt-ipv4: 172.20.50.12
+      binds:
+        - ./configs/linux10_frr.conf:/etc/frr/frr.conf
+    linux11:
+      kind: linux
+      mgmt-ipv4: 172.20.50.211
+      binds:
+        - ./configs/linux11_frr.conf:/etc/frr/frr.conf
+    linux12:
+      kind: linux
+      mgmt-ipv4: 172.20.50.212
+      binds:
+        - ./configs/linux12_frr.conf:/etc/frr/frr.conf
+
+    # ===============================================================
+    # 💻 Client 節點
+    # ===============================================================
+    client-u01:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      mgmt-ipv4: 172.20.50.21
+      cpu-set: "16-17"
+
+    client-u02:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      mgmt-ipv4: 172.20.50.22
+      cpu-set: "18-19"
+
+    client-l10:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      mgmt-ipv4: 172.20.50.23
+      cpu-set: "20-21"
+
+    client-l08:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      mgmt-ipv4: 172.20.50.24
+      cpu-set: "22-23"
+
+  links:
+    - endpoints: ["linux01:eth1", "juniper01:eth1"]
+    - endpoints: ["linux02:eth5", "juniper01:eth2"]
+    - endpoints: ["juniper01:eth3", "juniper02:eth3"]
+    - endpoints: ["linux07:eth2", "juniper02:eth1"]
+    - endpoints: ["linux02:eth1", "juniper02:eth2"]
+    - endpoints: ["linux03:eth2", "juniper02:eth4"]
+    - endpoints: ["linux04:eth1", "juniper02:eth5"]
+    - endpoints: ["linux03:eth1", "juniper01:eth4"]
+    - endpoints: ["linux10:eth1", "juniper01:eth5"]
+    - endpoints: ["linux09:eth2", "juniper01:eth6"]
+    - endpoints: ["linux08:eth4", "juniper02:eth6"]
